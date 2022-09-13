@@ -2,7 +2,17 @@ var http = require('http');
 var fs = require('fs');
 
 var server = http.createServer(async (req, res) => {
-    console.log(req.method + " " + req.url + " " + req.httpVersion);
+    var logMessage = req.method + " " + req.url + " " + req.httpVersion + ' ' + req.headers['content-type'] + ' '
+
+    await req.on('data', (chunk) => {
+        console.log(`Received ${chunk.length} bytes of data.`);
+        logMessage += chunk
+    });
+    await req.on('end', () => {
+        //console.log('There will be no more data.');
+    });
+
+    console.log(logMessage);
 
     if (req.url.endsWith('.html')) {
         res.setHeader("Content-Type", 'text/html');
