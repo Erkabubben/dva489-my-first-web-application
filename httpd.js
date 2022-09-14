@@ -1,18 +1,16 @@
-var http = require('http');
-var fs = require('fs');
+var http = require('http')
+var fs = require('fs')
+var url = require('url');
 
 var server = http.createServer(async (req, res) => {
     var logMessage = req.method + " " + req.url + " " + req.httpVersion + ' ' + req.headers['content-type'] + ' '
 
     await req.on('data', (chunk) => {
-        console.log(`Received ${chunk.length} bytes of data.`);
         logMessage += chunk
-    });
-    await req.on('end', () => {
-        //console.log('There will be no more data.');
-    });
+    })
+    await req.on('end', () => {})
 
-    console.log(logMessage);
+    console.log(logMessage)
 
     if (req.url.endsWith('.html')) {
         res.setHeader("Content-Type", 'text/html');
@@ -27,18 +25,39 @@ var server = http.createServer(async (req, res) => {
     var location = 'public' + req.url
 
     function getAssociatedController(req) {
-        const route = req.method + ";" + req.url
+        const route = req.method + ";" + req.url.split('?')[0]
+        const anyMethodRoute = 'ANY;' + req.url.split('?')[0]
         console.log(route)
         const controllerMethods = {
             'GET;/DisplayHelloWorldFromController': (req, res) => {
                 var generatedHTML = '<p>This is an Hello World-message from a controller method!</p>'
-                res.writeHead(200);
+                res.writeHead(200)
                 res.write(generatedHTML)
-                res.end();
+                res.end()
+            },
+            'ANY;/information': (req, res) => {
+                const data = fs.readFileSync('templates/information.template', { encoding: 'utf8' })
+                console.log(data)
+                var modifiedTemplate = String(data).replace('{{method}}', req.method)
+                var splitUrl = req.url.split('?')
+                modifiedTemplate = modifiedTemplate.replace('{{path}}', splitUrl[0])
+                if (splitUrl.length > 1) {
+                    modifiedTemplate = modifiedTemplate.replace('{{query}}', '?' + splitUrl[1])
+                    var queryData = url.parse(req.url, true).query;
+                    var queryKeyValPairs = ''
+                    for (const [key, value] of Object.entries(queryData)) {
+                        queryKeyValPairs += `<li>${key} : ${value}</li>`
+                    }
+                    modifiedTemplate = modifiedTemplate.replace('{{queries}}', queryKeyValPairs)
+                }
+                res.writeHead(200)
+                res.end(modifiedTemplate)
             }
         }
         if (controllerMethods.hasOwnProperty(route)) {
             return controllerMethods[route]
+        } else if (controllerMethods.hasOwnProperty(anyMethodRoute)) {
+            return controllerMethods[anyMethodRoute]
         } else {
             return null
         }
@@ -63,15 +82,15 @@ var server = http.createServer(async (req, res) => {
             generatedHTML += element + '<br>'
         });
         generatedHTML += '</p>'
-        res.writeHead(200);
+        res.writeHead(200)
         res.write(generatedHTML)
-        res.end();
+        res.end()
     }
 
     function serveFile(location) {
         data = fs.readFileSync(location)
-        res.writeHead(200);
-        res.end(data);
+        res.writeHead(200)
+        res.end(data)
     }
 
     var controller = getAssociatedController(req)
@@ -89,6 +108,6 @@ var server = http.createServer(async (req, res) => {
             serveFile(location)
         }
     }
-});
+})
 
-server.listen(8000);
+server.listen(8000)
