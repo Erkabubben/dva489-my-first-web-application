@@ -26,6 +26,24 @@ var server = http.createServer(async (req, res) => {
 
     var location = 'public' + req.url
 
+    function getAssociatedController(req) {
+        const route = req.method + ";" + req.url
+        console.log(route)
+        const controllerMethods = {
+            'GET;/DisplayHelloWorldFromController': (req, res) => {
+                var generatedHTML = '<p>This is an Hello World-message from a controller method!</p>'
+                res.writeHead(200);
+                res.write(generatedHTML)
+                res.end();
+            }
+        }
+        if (controllerMethods.hasOwnProperty(route)) {
+            return controllerMethods[route]
+        } else {
+            return null
+        }
+    }
+
     function serveDirectoryListing(location) {
         var dirPaths = []
         var filePaths = []
@@ -56,7 +74,11 @@ var server = http.createServer(async (req, res) => {
         res.end(data);
     }
 
-    if (fs.existsSync(location)) {
+    var controller = getAssociatedController(req)
+
+    if (controller !== null) {
+        controller(req, res)
+    } else if (fs.existsSync(location)) {
         if (fs.lstatSync(location).isDirectory()) {
             if (fs.existsSync(location + '/index.html')) {
                 serveFile(location + '/index.html')
